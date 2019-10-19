@@ -8,12 +8,21 @@ import Button from "@material-ui/core/Button";
 import IconButton from "@material-ui/core/IconButton";
 import Drawer from "@material-ui/core/Drawer";
 import MenuIcon from "@material-ui/icons/Menu";
-import { Link, Route } from "react-router-dom";
-import { auth } from "./firebase";
+import { Link } from "react-router-dom";
+import { auth, db } from "./firebase";
+import List from "@material-ui/core/List";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemIcon from "@material-ui/core/ListItemIcon";
+import ListItemSecondaryAction from "@material-ui/core/ListItemSecondaryAction";
+import ListItemText from "@material-ui/core/ListItemText";
+import Checkbox from "@material-ui/core/Checkbox";
+import DeleteIcon from "@material-ui/icons/Delete";
 
 export function App(props) {
   const [drawer_open, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [new_task, setNewTask] = useState("");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(u => {
@@ -25,6 +34,56 @@ export function App(props) {
     });
     return unsubscribe;
   }, [props.history]);
+
+  useEffect(() => {
+    let unsubscribe;
+    if (user) {
+      unsubscribe = db
+        .collection("users")
+        .doc(user.uid)
+        .collection("tasks")
+        .onSnapshot(snapshot => {
+          const updated_tasks = [];
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            updated_tasks.push({
+              text: data.text,
+              checked: data.checked,
+              id: doc.id
+            });
+            setTasks(updated_tasks);
+          });
+        });
+    }
+
+    return unsubscribe;
+  }, [user]);
+
+  const handleAddTask = () => {
+    db.collection("users")
+      .doc(user.uid)
+      .collection("tasks")
+      .add({ text: new_task, checked: false })
+      .then(() => {
+        setNewTask("");
+      });
+  };
+
+  const handleDelete = task_id => {
+    db.collection("users")
+      .doc(user.uid)
+      .collection("tasks")
+      .doc(task_id)
+      .delete();
+  };
+
+  const handleCheck = (checked, task_id) => {
+    db.collection("users")
+      .doc(user.uid)
+      .collection("tasks")
+      .doc(task_id)
+      .update({ checked: checked });
+  };
 
   const handleSignOut = () => {
     auth
@@ -74,6 +133,64 @@ export function App(props) {
           setDrawerOpen(false);
         }}
       />
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <Paper
+          style={{
+            marginTop: 30,
+            maxWidth: "500px",
+            width: "100%",
+            padding: "40px"
+          }}
+        >
+          <Typography variant="h6" component="h3">
+            To Do List
+          </Typography>
+          <div style={{ display: "flex", marginTop: "30px" }}>
+            <TextField
+              fullWidth={true}
+              placeholder="Enter Task Here"
+              style={{ marginRight: "30px" }}
+              value={new_task}
+              onChange={e => {
+                setNewTask(e.target.value);
+              }}
+            />
+            <Button variant="contained" color="primary" onClick={handleAddTask}>
+              Add
+            </Button>
+          </div>
+          <List>
+            {tasks.map(value => {
+              const labelId = `checkbox-list-label-${value}`;
+
+              return (
+                <ListItem key={value.id}>
+                  <ListItemIcon>
+                    <Checkbox
+                      checked={value.checked}
+                      onChange={(e, checked) => {
+                        handleCheck(checked, value.id);
+                      }}
+                      //checked={checked.indexOf(value) !== -1}
+                      inputProps={{ "aria-labelledby": labelId }}
+                    />
+                  </ListItemIcon>
+                  <ListItemText id={labelId} primary={value.text} />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      onClick={() => {
+                        handleDelete(value.id);
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Paper>
+      </div>
     </div>
   );
 }
@@ -85,7 +202,7 @@ export function SignIn(props) {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(u => {
       if (u) {
-        props.history.push("/app");
+        props.history.push("/todo");
       }
       // do something
     });
