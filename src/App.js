@@ -51,8 +51,8 @@ export function App(props) {
               checked: data.checked,
               id: doc.id
             });
-            setTasks(updated_tasks);
           });
+          setTasks(updated_tasks);
         });
     }
 
@@ -99,6 +99,8 @@ export function App(props) {
   if (!user) {
     return <div />;
   }
+
+  console.log(tasks);
 
   return (
     <div>
@@ -161,8 +163,7 @@ export function App(props) {
           </div>
           <List>
             {tasks.map(value => {
-              const labelId = `checkbox-list-label-${value}`;
-
+              console.log(value);
               return (
                 <ListItem key={value.id}>
                   <ListItemIcon>
@@ -171,11 +172,9 @@ export function App(props) {
                       onChange={(e, checked) => {
                         handleCheck(checked, value.id);
                       }}
-                      //checked={checked.indexOf(value) !== -1}
-                      inputProps={{ "aria-labelledby": labelId }}
                     />
                   </ListItemIcon>
-                  <ListItemText id={labelId} primary={value.text} />
+                  <ListItemText primary={value.text} />
                   <ListItemSecondaryAction>
                     <IconButton
                       onClick={() => {
